@@ -1,6 +1,6 @@
-# VistoAPP
+# Visto
 
-VistoAPP is a MERN-stack MVP that turns your GitHub activity into a customizable, shareable developer portfolio.
+Visto is a MERN-stack MVP that turns your GitHub activity into a customizable, shareable developer portfolio.
 
 This project is designed to be **no-AI**, **free-tier friendly**, and **hackathon-ready**:
 

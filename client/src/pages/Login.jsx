@@ -90,7 +90,7 @@ const Login = () => {
                 {/* GitHub Login Button */}
                 <button
                     onClick={handleLogin}
-                    className="w-full flex items-center justify-center gap-3 bg-gray-900 hover:bg-gray-800 text-white font-medium py-3 px-4 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                    className="w-full flex items-center justify-center gap-3 bg-gray-900 hover:bg-gray-800 text-white font-medium py-3 px-4 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 hover:shadow-md active:scale-[0.98]"
                 >
                     <svg
                         className="w-5 h-5"
@@ -112,12 +112,12 @@ const Login = () => {
                 </p>
 
                 {/* Clear session button (for troubleshooting) */}
-                <div className="mt-4 text-center">
+                <div className="mt-6 pt-6 border-t border-gray-200 text-center">
                     <button
                         onClick={handleClearSession}
-                        className="text-sm text-gray-500 hover:text-gray-700 underline"
+                        className="text-sm text-gray-500 hover:text-gray-700 transition-colors duration-200"
                     >
-                        Clear session / Having issues?
+                        Having issues? Clear session
                     </button>
                 </div>
             </div>

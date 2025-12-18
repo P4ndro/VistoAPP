@@ -1,12 +1,11 @@
+import dotenv from 'dotenv';
+dotenv.config({ quiet: true });
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import cookieParser from 'cookie-parser';
-import jwt from 'jsonwebtoken';
-import axios from 'axios';
-
-dotenv.config({ quiet: true });
+import authRoutes from './routes/auth.js';
 
 const app = express();
 
@@ -32,7 +31,7 @@ mongoose.connect(DATABASE_URL)
         console.error('❌ MongoDB connection error:', err.message);
     });
 
-
+app.use('/auth', authRoutes);
 
 app.get('/', (req, res) => {
     res.json({ message: 'Hello World' });

@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import ProtectedRoute from '../components/ProtectedRoute';
 
@@ -29,16 +29,24 @@ const Dashboard = () => {
                                     Welcome, {user?.username || 'User'}!
                                 </h1>
                                 <p className="text-gray-600 mt-1">
-                                    Manage your developer portfolio
+                                    GitHub Statistics Overview
                                 </p>
                             </div>
                         </div>
-                        <button
-                            onClick={handleLogout}
-                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                        >
-                            Logout
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <Link
+                                to="/dashboard/design"
+                                className="px-4 py-2 text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                            >
+                                Design Portfolio
+                            </Link>
+                            <button
+                                onClick={handleLogout}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                            >
+                                Logout
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -74,14 +82,14 @@ const Dashboard = () => {
 
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
                     <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                        Your Portfolio
+                        GitHub Statistics
                     </h2>
                     <p className="text-gray-600 mb-4">
-                        Your GitHub statistics and portfolio will appear here after we sync your data.
+                        Your GitHub statistics will appear here after we sync your data from GitHub.
                     </p>
                     <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
                         <p className="text-sm text-blue-800">
-                            <strong>Next step:</strong> Sync your GitHub data to populate your portfolio.
+                            <strong>Next step:</strong> Sync your GitHub data to view your statistics, then design your portfolio.
                         </p>
                     </div>
                 </div>

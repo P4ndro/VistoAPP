@@ -73,13 +73,11 @@ VistoAPP/
 3. Create a database user and set a password
 4. Whitelist your IP address (or use `0.0.0.0/0` for development)
 5. Get your connection string from "Connect" → "Connect your application"
-6. Replace `<password>` with your database user password
-7. Add the connection string to `server/.env` as `DATABASE_URL`
+6. The connection string will look like: `mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/vistoapp?retryWrites=true&w=majority`
+7. Replace `<username>` and `<password>` with your actual database credentials
+8. Add the complete connection string to `server/.env` as `DATABASE_URL`
 
-Example connection string:
-```
-mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/vistoapp?retryWrites=true&w=majority
-```
+**Important**: Never commit your actual MongoDB connection string to version control. Only add it to your local `.env` file.
 
 ### Local MongoDB
 

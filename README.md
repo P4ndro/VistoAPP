@@ -41,8 +41,80 @@ This project is designed to be **no-AI**, **free-tier friendly**, and **hackatho
 
 ## Project Structure
 
-- `client/` – Vite + React frontend (dashboard, customization, public profile)
-- `server/` – Express backend (auth, sync, dashboard/config APIs)
+```
+VistoAPP/
+├── client/                 # React frontend
+│   ├── src/
+│   │   ├── components/    # Reusable components (ProtectedRoute, LoadingSpinner)
+│   │   ├── pages/         # Page components (Login, Dashboard, Home, About, Contact)
+│   │   ├── store/         # Zustand stores (authStore)
+│   │   ├── utils/         # Utilities (API client)
+│   │   └── App.jsx        # Main app component with routing
+│   └── package.json
+│
+├── server/                 # Express backend
+│   ├── models/            # Mongoose models (User)
+│   ├── routes/            # API routes (auth.js)
+│   ├── middleware/        # Express middleware (authMiddleware - planned)
+│   ├── index.js           # Server entry point
+│   └── package.json
+│
+└── README.md
+```
+
+---
+
+## Database Setup
+
+### MongoDB Atlas (Recommended)
+
+1. Sign up at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. Create a free cluster
+3. Create a database user and set a password
+4. Whitelist your IP address (or use `0.0.0.0/0` for development)
+5. Get your connection string from "Connect" → "Connect your application"
+6. Replace `<password>` with your database user password
+7. Add the connection string to `server/.env` as `DATABASE_URL`
+
+Example connection string:
+```
+mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/vistoapp?retryWrites=true&w=majority
+```
+
+### Local MongoDB
+
+If using a local MongoDB instance, use:
+```
+DATABASE_URL=mongodb://localhost:27017/vistoapp
+```
+
+---
+
+## GitHub OAuth Setup
+
+To enable GitHub OAuth, you'll need to create a GitHub OAuth App:
+
+1. Go to GitHub Settings → Developer settings → OAuth Apps
+2. Click "New OAuth App"
+3. Fill in:
+   - **Application name**: VistoAPP (or your choice)
+   - **Homepage URL**: `http://localhost:5173` (or your frontend URL)
+   - **Authorization callback URL**: `http://localhost:3000/auth/github/callback` (or your backend URL + `/auth/github/callback`)
+4. Copy the **Client ID** and **Client Secret**
+5. Add them to your `server/.env` file:
+   ```env
+   GITHUB_CLIENT_ID=<your-client-id>
+   GITHUB_CLIENT_SECRET=<your-client-secret>
+   ```
+
+---
+
+## Prerequisites
+
+- Node.js (v18 or higher recommended)
+- npm or yarn
+- MongoDB Atlas account (free tier works) OR local MongoDB instance
+- GitHub account (for OAuth App setup)
 
 ---
 

@@ -12,16 +12,18 @@ This project is designed to be **no-AI**, **free-tier friendly**, and **hackatho
 
 - **GitHub OAuth Authentication** - Secure login with GitHub OAuth (Authorization Code flow)
 - **JWT Session Management** - HttpOnly cookies for secure session handling
-- **User Dashboard** - Private dashboard with user profile and statistics placeholder
+- **User Dashboard** - Private dashboard with user profile and GitHub statistics display
 - **Protected Routes** - Frontend route protection with authentication checks
 - **Responsive UI** - Modern, clean interface built with Tailwind CSS v4
+- **GitHub Data Sync** - Manual sync to fetch and cache GitHub statistics from API
+- **Statistics Display** - Real-time display of repositories, languages, commits, stars, and forks
+- **Enhanced Repository Data** - Detailed repo information including descriptions, topics, languages, and metadata
 
 ### 🚧 In Progress / Planned
 
-- **GitHub Data Sync** - Manual sync to fetch and cache GitHub statistics
-- **Statistics Display** - Show repositories, languages, and activity on dashboard
+- **Design & Customization Page** - Layout editor for customizing portfolio appearance
 - **Public Profile** - Shareable profile page at `/u/:username`
-- **Layout Customization** - Drag-and-drop layout editor for portfolio sections
+- **Layout Customization** - Drag-and-drop layout editor for portfolio sections with pin/unpin repos
 - **Theme Customization** - Custom color schemes and styling options
 - **Export Functionality** - Client-side export to PNG/PDF using `html2canvas` and `jsPDF`
 
@@ -47,15 +49,15 @@ VistoAPP/
 │   ├── src/
 │   │   ├── components/    # Reusable components (ProtectedRoute, LoadingSpinner)
 │   │   ├── pages/         # Page components (Login, Dashboard, Home, About, Contact)
-│   │   ├── store/         # Zustand stores (authStore)
+│   │   ├── store/         # Zustand stores (authStore, statsStore)
 │   │   ├── utils/         # Utilities (API client)
 │   │   └── App.jsx        # Main app component with routing
 │   └── package.json
 │
 ├── server/                 # Express backend
-│   ├── models/            # Mongoose models (User)
-│   ├── routes/            # API routes (auth.js)
-│   ├── middleware/        # Express middleware (authMiddleware - planned)
+│   ├── models/            # Mongoose models (User, StatsCache)
+│   ├── routes/            # API routes (auth.js, stats.js)
+│   ├── middleware/        # Express middleware (authMiddleware)
 │   ├── index.js           # Server entry point
 │   └── package.json
 │
@@ -208,7 +210,14 @@ Vite will start the React app on `http://localhost:5173`.
 - `GET /auth/me` - Get current authenticated user (requires valid JWT)
 - `POST /auth/logout` - Logout and clear session cookie
 
-### Current Routes
+### Statistics Routes (`/stats`)
+
+- `GET /stats` - Get cached GitHub statistics for authenticated user (requires JWT)
+- `POST /stats/sync` - Sync and fetch latest GitHub data (requires JWT)
+  - Fetches repositories, languages, commits, and aggregates statistics
+  - Stores detailed repo information (description, topics, stars, forks, etc.)
+
+### Other Routes
 
 - `GET /` - Health check endpoint
 - `GET /about` - About page (placeholder)
@@ -224,23 +233,28 @@ Vite will start the React app on `http://localhost:5173`.
   - HttpOnly cookie-based session management
   - Frontend auth state management with Zustand
 
-- ✅ **Private dashboard view** - Completed (UI ready, data sync pending)
-  - User profile display
-  - Statistics cards (placeholder for GitHub data)
+- ✅ **Private dashboard view** - Completed
+  - User profile display with GitHub avatar
+  - Real-time statistics cards (repositories, languages, commits)
+  - Sync button for refreshing GitHub data
   - Protected routes implementation
 
-- 🚧 **Sync GitHub repos/activity into cached stats** - Next up
-  - Create StatsCache model
-  - Implement `/sync` endpoint
-  - Fetch repositories, languages, and activity from GitHub API
-  - Display cached statistics on dashboard
+- ✅ **GitHub Data Sync & Statistics** - Completed
+  - StatsCache model with detailed repository information
+  - `/stats/sync` endpoint for fetching GitHub data
+  - Fetches repositories (excluding forks), languages, commits, stars, forks
+  - Stores detailed repo data: descriptions, topics, languages, dates, metadata
+  - Frontend stats store (Zustand) for state management
+  - Automatic stats fetching on dashboard load
 
 - 📋 **Public profile at `/u/:username`** - Planned
   - Public-facing portfolio page
   - Shareable URL generation
   - Profile customization visibility
 
-- 📋 **Layout + theme customization** - Planned
+- 🚧 **Layout + theme customization** - Next up
+  - Design page at `/dashboard/design`
+  - Pin/unpin repositories
   - Drag-and-drop section reordering
   - Section visibility toggles
   - Color theme selection

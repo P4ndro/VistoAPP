@@ -44,6 +44,7 @@ router.post('/sync', authMiddleware, async (req, res) => {
         const reposResponse = await axios.get('https://api.github.com/user/repos?per_page=100&sort=updated&type=all', {
             headers: authHeaders
         });
+    
 
         const allRepos = reposResponse.data;
         const forkCount = allRepos.filter(repo => repo.fork === true).length;
@@ -54,22 +55,46 @@ router.post('/sync', authMiddleware, async (req, res) => {
         let totalStars = 0;
         let totalForks = 0;
         const languageBytes = {};
+        const repositoriesArray = [];
 
         for (const repo of repos) {
             totalStars += repo.stargazers_count || 0;
             totalForks += repo.forks_count || 0;
 
+            let repoLanguages = {};
             try {
                 const langResponse = await axios.get(`https://api.github.com/repos/${repo.full_name}/languages`, {
                     headers: authHeaders
                 });
 
-                for (const [lang, bytes] of Object.entries(langResponse.data)) {
+                repoLanguages = langResponse.data || {};
+                for (const [lang, bytes] of Object.entries(repoLanguages)) {
                     languageBytes[lang] = (languageBytes[lang] || 0) + bytes;
                 }
             } catch (langError) {
                 console.error(`Error fetching languages for ${repo.full_name}:`, langError.message);
             }
+
+            repositoriesArray.push({
+                githubId: repo.id,
+                name: repo.name,
+                fullName: repo.full_name,
+                description: repo.description || "",
+                url: repo.url,
+                htmlUrl: repo.html_url,
+                stars: repo.stargazers_count || 0,
+                forks: repo.forks_count || 0,
+                watchers: repo.watchers_count || 0,
+                language: repo.language || null,
+                languages: repoLanguages,
+                topics: repo.topics || [],
+                createdAt: new Date(repo.created_at),
+                updatedAt: new Date(repo.updated_at),
+                pushedAt: repo.pushed_at ? new Date(repo.pushed_at) : null,
+                isPrivate: repo.private || false,
+                isFork: repo.fork || false,
+                defaultBranch: repo.default_branch || "main",
+            });
         }
 
         const totalBytes = Object.values(languageBytes).reduce((sum, bytes) => sum + bytes, 0);
@@ -130,33 +155,61 @@ router.post('/sync', authMiddleware, async (req, res) => {
             console.error('Error fetching commits:', error.message);
         }
 
-        const statsData = {
-            userId: user._id,
-            repositoryCount,
-            totalStars,
-            totalForks,
-            totalCommits,
-            languages,
-            recentCommits,
-            syncedAt: new Date()
+        console.log(`📦 Building repositories array with ${repositoriesArray.length} repos`);
+        if (repositoriesArray.length > 0) {
+            console.log(`   First repo example:`, {
+                name: repositoriesArray[0].name,
+                stars: repositoriesArray[0].stars,
+                hasDescription: !!repositoriesArray[0].description,
+                topicsCount: repositoriesArray[0].topics?.length || 0
+            });
+        }
+
+        const updateData = {
+            $set: {
+                userId: user._id,
+                repositoryCount,
+                totalStars,
+                totalForks,
+                totalCommits,
+                languages,
+                recentCommits,
+                syncedAt: new Date()
+            }
         };
+
+        if (repositoriesArray.length > 0) {
+            updateData.$set.repositories = repositoriesArray;
+        }
+
+        console.log('💾 Saving to database...', {
+            updateDataKeys: Object.keys(updateData.$set),
+            repositoriesCount: repositoriesArray.length
+        });
 
         const stats = await StatsCache.findOneAndUpdate(
             { userId: user._id },
-            statsData,
-            { upsert: true, new: true }
+            updateData,
+            { upsert: true, new: true, setDefaultsOnInsert: true }
         );
+
+        if (!stats) {
+            throw new Error('Failed to save stats to database');
+        }
 
         await User.findByIdAndUpdate(user._id, { lastSyncAt: new Date() });
 
         const statsObj = stats.toObject ? stats.toObject() : stats;
 
-        console.log('✅ Stats synced:', {
+        console.log('✅ Stats synced and saved:', {
+            documentId: statsObj._id,
             repositoryCount: statsObj.repositoryCount,
             totalStars: statsObj.totalStars,
             totalCommits: statsObj.totalCommits,
             recentCommits: statsObj.recentCommits,
-            languages: Object.keys(statsObj.languages || {}).length
+            languages: Object.keys(statsObj.languages || {}).length,
+            repositoriesInDB: Array.isArray(statsObj.repositories) ? statsObj.repositories.length : 'NOT FOUND',
+            hasRepositoriesField: 'repositories' in statsObj
         });
 
         return res.status(200).json({ 

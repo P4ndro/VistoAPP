@@ -44,8 +44,6 @@ const useAuthStore = create((set, get) => ({
         return { success: false, error: null };
       }
   
-      // 401 means "not authenticated" - this is EXPECTED, not an error
-      // 404 means user was deleted - also treat as not authenticated
       if (error.response?.status === 401 || error.response?.status === 404) {
         set({
           user: null,
@@ -56,7 +54,6 @@ const useAuthStore = create((set, get) => ({
         return { success: false, error: null };
       }
   
-      // Other HTTP errors (500, etc.)
       set({
         user: null,
         isAuthenticated: false,
@@ -94,7 +91,7 @@ const useAuthStore = create((set, get) => ({
   setUser: (user) => {
     set({
       user,
-      isAuthenticated: !!user,  // !! converts to boolean (null/undefined = false)
+      isAuthenticated: !!user, 
       error: null,
     });
   },

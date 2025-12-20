@@ -2,6 +2,7 @@ import express from 'express';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { authMiddleware } from '../middleware/auth.js';
 
 
 const router = express.Router();
@@ -94,25 +95,10 @@ router.get('/github/callback', async (req, res) => {
     }
 });
 
-router.get('/me', async (req, res) => {
-    try {
-        const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
-
-        if (!token) {
-            return res.status(401).json({ error: 'Not authenticated' });
-        }
-
-        const decoded = jwt.verify(token, JWT_SECRET);
-        const user = await User.findById(decoded.userId).select('-accessToken');
-
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        res.json({ user });
-    } catch (error) {
-        res.status(401).json({ error: 'Invalid token' });
-    }
+// Use authMiddleware instead of duplicating auth logic
+router.get('/me', authMiddleware, (req, res) => {
+    // req.user is already attached by authMiddleware
+    res.json({ user: req.user });
 });
 
 router.post('/logout', (req, res) => {

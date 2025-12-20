@@ -1,0 +1,181 @@
+import express from 'express';
+import { authMiddleware } from '../middleware/auth.js';
+import StatsCache from '../models/StatsCache.js';
+import User from '../models/User.js';
+import axios from 'axios';
+
+const router = express.Router();
+
+router.get('/', authMiddleware, async (req, res) => {
+    const { user } = req;
+    if (!user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    try {
+        const stats = await StatsCache.findOne({ userId: user._id });
+        if (!stats) {
+            return res.status(200).json({ stats: null });
+        }
+        return res.status(200).json({ stats });
+    } catch (error) {
+        console.error('Error fetching stats:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.post('/sync', authMiddleware, async (req, res) => {
+    const { user } = req;
+    if (!user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        const userWithToken = await User.findById(user._id);
+        
+        if (!userWithToken || !userWithToken.accessToken) {
+            return res.status(400).json({ error: 'GitHub access token not found. Please re-authenticate.' });
+        }
+
+        const authHeaders = {
+            Authorization: `Bearer ${userWithToken.accessToken}`,
+            Accept: 'application/vnd.github.v3+json'
+        };
+
+        const reposResponse = await axios.get('https://api.github.com/user/repos?per_page=100&sort=updated&type=all', {
+            headers: authHeaders
+        });
+
+        const allRepos = reposResponse.data;
+        const forkCount = allRepos.filter(repo => repo.fork === true).length;
+        const repos = allRepos.filter(repo => !repo.fork);
+        const repositoryCount = repos.length;
+        
+        console.log(`📊 Repos: ${allRepos.length} total, ${forkCount} forks, ${repositoryCount} original repos`);
+        let totalStars = 0;
+        let totalForks = 0;
+        const languageBytes = {};
+
+        for (const repo of repos) {
+            totalStars += repo.stargazers_count || 0;
+            totalForks += repo.forks_count || 0;
+
+            try {
+                const langResponse = await axios.get(`https://api.github.com/repos/${repo.full_name}/languages`, {
+                    headers: authHeaders
+                });
+
+                for (const [lang, bytes] of Object.entries(langResponse.data)) {
+                    languageBytes[lang] = (languageBytes[lang] || 0) + bytes;
+                }
+            } catch (langError) {
+                console.error(`Error fetching languages for ${repo.full_name}:`, langError.message);
+            }
+        }
+
+        const totalBytes = Object.values(languageBytes).reduce((sum, bytes) => sum + bytes, 0);
+        const languages = {};
+        for (const [lang, bytes] of Object.entries(languageBytes)) {
+            languages[lang] = totalBytes > 0 ? parseFloat(((bytes / totalBytes) * 100).toFixed(1)) : 0;
+        }
+
+        let totalCommits = 0;
+        let recentCommits = 0;
+        
+        try {
+            for (const repo of repos.slice(0, 30)) {
+                try {
+                    const commitsResponse = await axios.get(
+                        `https://api.github.com/repos/${repo.full_name}/commits?author=${userWithToken.username}&per_page=1`,
+                        { headers: authHeaders }
+                    );
+                    
+                    if (commitsResponse.headers.link) {
+                        const linkHeader = commitsResponse.headers.link;
+                        const lastPageMatch = linkHeader.match(/<[^>]*[?&]page=(\d+)[^>]*>; rel="last"/);
+                        if (lastPageMatch) {
+                            const commitCount = parseInt(lastPageMatch[1], 10);
+                            totalCommits += commitCount;
+                        } else if (commitsResponse.data.length > 0) {
+                            totalCommits += 1;
+                        }
+                    } else if (commitsResponse.data.length > 0) {
+                        totalCommits += 1;
+                    }
+                } catch (repoCommitsError) {
+                    if (repoCommitsError.response?.status !== 409) {
+                        console.error(`Error fetching commits for ${repo.full_name}:`, repoCommitsError.message);
+                    }
+                }
+            }
+            
+            try {
+                const eventsResponse = await axios.get(`https://api.github.com/users/${userWithToken.username}/events/public?per_page=100`, {
+                    headers: authHeaders
+                });
+
+                const events = eventsResponse.data;
+                const commitEvents = events.filter(event => event.type === 'PushEvent');
+                recentCommits = commitEvents.reduce((sum, event) => {
+                    const commitCount = event.payload.commits?.length || 0;
+                    return sum + commitCount;
+                }, 0);
+            } catch (eventsError) {
+                console.error('Error fetching commit events:', eventsError.message);
+            }
+            
+            if (recentCommits === 0 && totalCommits > 0) {
+                recentCommits = totalCommits;
+            }
+        } catch (error) {
+            console.error('Error fetching commits:', error.message);
+        }
+
+        const statsData = {
+            userId: user._id,
+            repositoryCount,
+            totalStars,
+            totalForks,
+            totalCommits,
+            languages,
+            recentCommits,
+            syncedAt: new Date()
+        };
+
+        const stats = await StatsCache.findOneAndUpdate(
+            { userId: user._id },
+            statsData,
+            { upsert: true, new: true }
+        );
+
+        await User.findByIdAndUpdate(user._id, { lastSyncAt: new Date() });
+
+        const statsObj = stats.toObject ? stats.toObject() : stats;
+
+        console.log('✅ Stats synced:', {
+            repositoryCount: statsObj.repositoryCount,
+            totalStars: statsObj.totalStars,
+            totalCommits: statsObj.totalCommits,
+            recentCommits: statsObj.recentCommits,
+            languages: Object.keys(statsObj.languages || {}).length
+        });
+
+        return res.status(200).json({ 
+            message: 'Stats synced successfully',
+            stats: statsObj
+        });
+
+    } catch (error) {
+        console.error('Error syncing stats:', error);
+        
+        if (error.response?.status === 401) {
+            return res.status(401).json({ error: 'GitHub authentication failed. Please re-authenticate.' });
+        }
+        
+        return res.status(500).json({ 
+            error: 'Internal server error',
+            message: error.message 
+        });
+    }
+});
+
+export default router;

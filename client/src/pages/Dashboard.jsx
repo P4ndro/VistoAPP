@@ -1,13 +1,20 @@
 import { useNavigate, Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useAuthStore from '../store/authStore';
+import useStatsStore from '../store/statsStore';
 import ProtectedRoute from '../components/ProtectedRoute';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const Dashboard = () => {
     const navigate = useNavigate();
     const { user, logout } = useAuthStore();
+    const { stats, isLoading, isSyncing, error, fetchStats, syncStats } = useStatsStore();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    useEffect(() => {
+        fetchStats();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleLogout = async () => {
         setIsLoggingOut(true);
@@ -18,6 +25,22 @@ const Dashboard = () => {
             console.error('Logout error:', error);
             setIsLoggingOut(false);
         }
+    };
+
+    const handleSync = async () => {
+        const result = await syncStats();
+        if (result.success) {
+            // Stats updated, no need to refetch since syncStats updates the store
+        }
+    };
+
+    const formatLanguages = (languages) => {
+        if (!languages || typeof languages !== 'object') return null;
+        const langArray = Object.entries(languages)
+            .sort((a, b) => parseFloat(b[1]) - parseFloat(a[1]))
+            .slice(0, 5)
+            .map(([lang, pct]) => `${lang} (${pct}%)`);
+        return langArray.join(', ');
     };
 
     const StatCard = ({ title, value, description, icon }) => (
@@ -74,6 +97,13 @@ const Dashboard = () => {
                             </div>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
+                            <button
+                                onClick={handleSync}
+                                disabled={isSyncing || isLoading}
+                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isSyncing ? 'Syncing...' : 'Sync GitHub Data'}
+                            </button>
                             <Link
                                 to="/dashboard/design"
                                 className="px-4 py-2 text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
@@ -92,53 +122,97 @@ const Dashboard = () => {
                 </div>
 
                 {/* Statistics Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                    <StatCard
-                        title="Repositories"
-                        value={null}
-                        description="GitHub repositories"
-                        icon={
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                        }
-                    />
-                    <StatCard
-                        title="Languages"
-                        value={null}
-                        description="Programming languages"
-                        icon={
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                            </svg>
-                        }
-                    />
-                    <StatCard
-                        title="Activity"
-                        value={null}
-                        description="Recent commits"
-                        icon={
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
-                        }
-                    />
-                </div>
+                {isLoading ? (
+                    <div className="flex justify-center items-center py-12">
+                        <LoadingSpinner />
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                        <StatCard
+                            title="Repositories"
+                            value={stats?.repositoryCount ?? '-'}
+                            description="GitHub repositories"
+                            icon={
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            }
+                        />
+                        <StatCard
+                            title="Languages"
+                            value={stats?.languages ? Object.keys(stats.languages).length : '-'}
+                            description={stats?.languages ? formatLanguages(stats.languages) || 'Programming languages' : 'Programming languages'}
+                            icon={
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                                </svg>
+                            }
+                        />
+                        <StatCard
+                            title="Activity"
+                            value={stats?.recentCommits ?? '-'}
+                            description="Recent commits"
+                            icon={
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            }
+                        />
+                    </div>
+                )}
+
+                {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+                        <p className="text-sm text-red-800">{error}</p>
+                    </div>
+                )}
 
                 {/* Info Section */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
-                    <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">
-                        GitHub Statistics
-                    </h2>
-                    <p className="text-gray-600 mb-4">
-                        Your GitHub statistics will appear here after we sync your data from GitHub.
-                    </p>
-                    <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                        <p className="text-sm text-blue-800">
-                            <strong>Next step:</strong> Sync your GitHub data to view your statistics, then design your portfolio.
+                {!stats && !isLoading && (
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
+                        <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">
+                            GitHub Statistics
+                        </h2>
+                        <p className="text-gray-600 mb-4">
+                            Your GitHub statistics will appear here after you sync your data from GitHub.
                         </p>
+                        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                            <p className="text-sm text-blue-800">
+                                <strong>Next step:</strong> Click "Sync GitHub Data" above to fetch your repository statistics, then design your portfolio.
+                            </p>
+                        </div>
                     </div>
-                </div>
+                )}
+                
+                {stats && (
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
+                        <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">
+                            Statistics Details
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-sm text-gray-600">Total Stars</p>
+                                <p className="text-2xl font-bold text-gray-900">{stats.totalStars || 0}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-600">Total Forks</p>
+                                <p className="text-2xl font-bold text-gray-900">{stats.totalForks || 0}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-600">Total Commits</p>
+                                <p className="text-2xl font-bold text-gray-900">{stats.totalCommits || 0}</p>
+                            </div>
+                            {stats.syncedAt && (
+                                <div>
+                                    <p className="text-sm text-gray-600">Last Synced</p>
+                                    <p className="text-lg font-semibold text-gray-900">
+                                        {new Date(stats.syncedAt).toLocaleString()}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
         </ProtectedRoute>
     );

@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 dotenv.config({ quiet: true });
+import statsRoutes from './routes/stats.js';
 
 import express from 'express';
 import cors from 'cors';
@@ -32,7 +33,7 @@ mongoose.connect(DATABASE_URL)
     });
 
 app.use('/auth', authRoutes);
-
+app.use('/stats', statsRoutes);
 app.get('/', (req, res) => {
     res.json({ message: 'Hello World' });
 });

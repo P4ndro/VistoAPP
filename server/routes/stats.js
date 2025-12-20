@@ -51,7 +51,6 @@ router.post('/sync', authMiddleware, async (req, res) => {
         const repos = allRepos.filter(repo => !repo.fork);
         const repositoryCount = repos.length;
         
-        console.log(`📊 Repos: ${allRepos.length} total, ${forkCount} forks, ${repositoryCount} original repos`);
         let totalStars = 0;
         let totalForks = 0;
         const languageBytes = {};
@@ -155,16 +154,6 @@ router.post('/sync', authMiddleware, async (req, res) => {
             console.error('Error fetching commits:', error.message);
         }
 
-        console.log(`📦 Building repositories array with ${repositoriesArray.length} repos`);
-        if (repositoriesArray.length > 0) {
-            console.log(`   First repo example:`, {
-                name: repositoriesArray[0].name,
-                stars: repositoriesArray[0].stars,
-                hasDescription: !!repositoriesArray[0].description,
-                topicsCount: repositoriesArray[0].topics?.length || 0
-            });
-        }
-
         const updateData = {
             $set: {
                 userId: user._id,
@@ -182,11 +171,6 @@ router.post('/sync', authMiddleware, async (req, res) => {
             updateData.$set.repositories = repositoriesArray;
         }
 
-        console.log('💾 Saving to database...', {
-            updateDataKeys: Object.keys(updateData.$set),
-            repositoriesCount: repositoriesArray.length
-        });
-
         const stats = await StatsCache.findOneAndUpdate(
             { userId: user._id },
             updateData,
@@ -200,17 +184,6 @@ router.post('/sync', authMiddleware, async (req, res) => {
         await User.findByIdAndUpdate(user._id, { lastSyncAt: new Date() });
 
         const statsObj = stats.toObject ? stats.toObject() : stats;
-
-        console.log('✅ Stats synced and saved:', {
-            documentId: statsObj._id,
-            repositoryCount: statsObj.repositoryCount,
-            totalStars: statsObj.totalStars,
-            totalCommits: statsObj.totalCommits,
-            recentCommits: statsObj.recentCommits,
-            languages: Object.keys(statsObj.languages || {}).length,
-            repositoriesInDB: Array.isArray(statsObj.repositories) ? statsObj.repositories.length : 'NOT FOUND',
-            hasRepositoriesField: 'repositories' in statsObj
-        });
 
         return res.status(200).json({ 
             message: 'Stats synced successfully',

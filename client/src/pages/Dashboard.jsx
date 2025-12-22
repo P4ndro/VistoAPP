@@ -4,6 +4,7 @@ import useAuthStore from '../store/authStore';
 import useStatsStore from '../store/statsStore';
 import ProtectedRoute from '../components/ProtectedRoute';
 import LoadingSpinner from '../components/LoadingSpinner';
+import RepoCard from '../components/RepoCard';
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -11,9 +12,26 @@ const Dashboard = () => {
     const { stats, isLoading, isSyncing, error, fetchStats, syncStats } = useStatsStore();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+    
+    const repositories = stats?.repositories || [];
+    const hasRepositories = Array.isArray(repositories) && repositories.length > 0;
+
+    
+    const last6Repos = hasRepositories
+        ? [...repositories]
+            .sort((a, b) => {
+                // Use pushedAt if available, fallback to updatedAt
+                const dateA = a.pushedAt ? new Date(a.pushedAt) : new Date(a.updatedAt);
+                const dateB = b.pushedAt ? new Date(b.pushedAt) : new Date(b.updatedAt);
+               
+                return dateB - dateA;
+            })
+            .slice(0, 6)
+        : [];
+
     useEffect(() => {
         fetchStats();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        
     }, []);
 
     const handleLogout = async () => {
@@ -158,6 +176,20 @@ const Dashboard = () => {
                                 </svg>
                             }
                         />
+                    </div>
+                )}
+
+                {/* Recent Repositories Section */}
+                {hasRepositories && last6Repos.length > 0 && (
+                    <div className="mb-8">
+                        <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">
+                            Recent Repositories
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {last6Repos.map((repo) => (
+                                <RepoCard key={repo.githubId || repo.fullName} repo={repo} />
+                            ))}
+                        </div>
                     </div>
                 )}
 

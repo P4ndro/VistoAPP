@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import useConfigStore from '../store/configStore';
 import useStatsStore from '../store/statsStore';
 import useAuthStore from '../store/authStore';
@@ -7,6 +7,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const Design = () => {
+    const navigate = useNavigate();
     const { user } = useAuthStore();
     const { config, isLoading: configLoading, isSaving, error: configError, fetchConfig, saveConfig, clearError } = useConfigStore();
     const { stats, isLoading: statsLoading, fetchStats } = useStatsStore();
@@ -46,11 +47,36 @@ const Design = () => {
             setSelectedTheme(config.theme || 'light');
             setSelectedPinnedRepos(config.pinnedRepos || []);
             setCustomTextSections(config.customTextSections || []);
-            setVisibleStats(config.visibleStats || [
-                { id: 'repos', label: 'Repos', value: 0, visible: true },
-                { id: 'stars', label: 'Stars', value: 0, visible: true },
-                { id: 'commits', label: 'Commits', value: 0, visible: true },
-            ]);
+            // Load visibleStats from config, ensuring we always have all three stats
+            const savedStats = config.visibleStats || [];
+            const allStatIds = ['repos', 'stars', 'commits'];
+            const savedStatsMap = new Map(savedStats.map(s => [s.id, s]));
+            
+            // Ensure all three stats exist, use saved data or defaults
+            const loadedStats = allStatIds.map(id => {
+                const saved = savedStatsMap.get(id);
+                return saved || {
+                    id,
+                    label: id === 'repos' ? 'Repos' : id === 'stars' ? 'Stars' : 'Commits',
+                    visible: true, // Default to visible if not saved
+                };
+            });
+            
+            // Set visibleStats with values from stats if available, otherwise 0
+            if (stats) {
+                setVisibleStats(loadedStats.map(stat => ({
+                    ...stat,
+                    value: stat.id === 'repos' ? (stats.repositoryCount || 0) :
+                           stat.id === 'stars' ? (stats.totalStars || 0) :
+                           stat.id === 'commits' ? (stats.totalCommits || 0) : 0
+                })));
+            } else {
+                // Set with 0 values, will be updated when stats loads
+                setVisibleStats(loadedStats.map(stat => ({
+                    ...stat,
+                    value: 0
+                })));
+            }
             // Always set itemOrder from config if it exists (preserve saved order)
             if (config.itemOrder && config.itemOrder.length > 0) {
                 setItemOrder(config.itemOrder);
@@ -64,7 +90,7 @@ const Design = () => {
                 setItemSizes(config.itemSizes);
             }
         }
-    }, [config]);
+    }, [config, stats]); // Include stats in dependencies so values update when stats loads
 
     // Sync item order when repos or text sections change (only if order doesn't match)
     useEffect(() => {
@@ -98,12 +124,23 @@ const Design = () => {
     // Update stats values when stats data loads
     useEffect(() => {
         if (stats) {
-            setVisibleStats(prev => prev.map(stat => ({
-                ...stat,
-                value: stat.id === 'repos' ? (stats.repositoryCount || 0) :
-                       stat.id === 'stars' ? (stats.totalStars || 0) :
-                       stat.id === 'commits' ? (stats.totalCommits || 0) : stat.value
-            })));
+            setVisibleStats(prev => {
+                // Ensure we have all three stats, preserve visibility and order
+                const allStatIds = ['repos', 'stars', 'commits'];
+                const existingStatsMap = new Map(prev.map(s => [s.id, s]));
+                
+                return allStatIds.map(id => {
+                    const existing = existingStatsMap.get(id);
+                    return {
+                        id,
+                        label: existing?.label || (id === 'repos' ? 'Repos' : id === 'stars' ? 'Stars' : 'Commits'),
+                        visible: existing?.visible !== undefined ? existing.visible : true,
+                        value: id === 'repos' ? (stats.repositoryCount || 0) :
+                               id === 'stars' ? (stats.totalStars || 0) :
+                               id === 'commits' ? (stats.totalCommits || 0) : 0
+                    };
+                });
+            });
         }
     }, [stats]);
 
@@ -233,7 +270,10 @@ const Design = () => {
     };
 
     const handleRemoveStat = (statId) => {
-        setVisibleStats(prev => prev.filter(stat => stat.id !== statId));
+        // Mark as not visible instead of removing
+        setVisibleStats(prev => prev.map(stat => 
+            stat.id === statId ? { ...stat, visible: false } : stat
+        ));
     };
 
     // Stats drag and drop handlers
@@ -399,11 +439,17 @@ const Design = () => {
                                 <h1 className="text-2xl font-bold text-gray-900">Design Your Portfolio</h1>
                             </div>
                             <button
-                                onClick={handleSave}
+                                onClick={async () => {
+                                    // Save before navigating
+                                    const result = await handleSave();
+                                    if (result.success) {
+                                        navigate('/dashboard/export');
+                                    }
+                                }}
                                 disabled={isSaving}
-                                className="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                className="px-6 py-3 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                             >
-                                {isSaving ? 'Saving...' : 'Save Design'}
+                                Export Portfolio
                             </button>
                         </div>
                     </div>
@@ -574,12 +620,21 @@ const Design = () => {
                             <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6">
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-lg font-semibold text-gray-900">Live Preview</h2>
-                                    <button
-                                        onClick={handleAddTextSection}
-                                        className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
-                                    >
-                                        + Add Text
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={handleAddTextSection}
+                                            className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
+                                        >
+                                            + Add Text
+                                        </button>
+                                        <button
+                                            onClick={handleSave}
+                                            disabled={isSaving}
+                                            className="px-3 py-1.5 text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
+                                        >
+                                            {isSaving ? 'Saving...' : 'Save'}
+                                        </button>
+                                    </div>
                                 </div>
                                 
                                 {/* Preview Container */}
@@ -669,31 +724,22 @@ const Design = () => {
                                         </div>
                                     )}
 
-                                    {/* Add Stats Button (if some stats are hidden/removed) */}
+                                    {/* Add Stats Button (if some stats are hidden) */}
                                     {(() => {
-                                        const allPossibleStats = [
-                                            { id: 'repos', label: 'Repos' },
-                                            { id: 'stars', label: 'Stars' },
-                                            { id: 'commits', label: 'Commits' },
-                                        ];
-                                        const missingStats = allPossibleStats.filter(stat => !visibleStats.find(vs => vs.id === stat.id));
-                                        return missingStats.length > 0 && (
+                                        const hiddenStats = visibleStats.filter(stat => !stat.visible);
+                                        return hiddenStats.length > 0 && (
                                             <div className="mb-6">
                                                 <button
                                                     onClick={() => {
-                                                        const statToAdd = missingStats[0];
-                                                        const value = statToAdd.id === 'repos' ? (stats?.repositoryCount || 0) :
-                                                                     statToAdd.id === 'stars' ? (stats?.totalStars || 0) :
-                                                                     (stats?.totalCommits || 0);
-                                                        setVisibleStats(prev => [...prev, { 
-                                                            ...statToAdd, 
-                                                            value, 
-                                                            visible: true 
-                                                        }]);
+                                                        const statToShow = hiddenStats[0];
+                                                        // Make it visible (stats should already exist)
+                                                        setVisibleStats(prev => prev.map(stat =>
+                                                            stat.id === statToShow.id ? { ...stat, visible: true } : stat
+                                                        ));
                                                     }}
                                                     className="px-3 py-2 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors"
                                                 >
-                                                    + Add Stat ({missingStats[0]?.label})
+                                                    + Show {hiddenStats[0]?.label}
                                                 </button>
                                             </div>
                                         );

@@ -5,6 +5,7 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Design from './pages/Design';
 import useAuthStore from './store/authStore';
 
 const NavLink = ({ to, children }) => {
@@ -102,6 +103,7 @@ function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard/design" element={<Design />} />
         </Routes>
       </div>
     </Router>

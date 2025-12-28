@@ -42,12 +42,26 @@ const useConfigStore = create((set, get) => ({
         try {
             const current = get().config || {};
 
-            
+            // Build payload with all fields, using provided values or falling back to current/defaults
             const payload = {
                 layout: partialConfig.layout ?? current.layout ?? 'default',
                 theme: partialConfig.theme ?? current.theme ?? 'light',
                 pinnedRepos: partialConfig.pinnedRepos ?? current.pinnedRepos ?? [],
             };
+
+            // Add new fields if provided
+            if (partialConfig.customTextSections !== undefined) {
+                payload.customTextSections = partialConfig.customTextSections;
+            }
+            if (partialConfig.itemOrder !== undefined) {
+                payload.itemOrder = partialConfig.itemOrder;
+            }
+            if (partialConfig.itemSizes !== undefined) {
+                payload.itemSizes = partialConfig.itemSizes;
+            }
+            if (partialConfig.visibleStats !== undefined) {
+                payload.visibleStats = partialConfig.visibleStats;
+            }
 
             const response = await api.put('/config', payload);
             const { config } = response.data;

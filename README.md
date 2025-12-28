@@ -18,14 +18,31 @@ This project is designed to be **no-AI**, **free-tier friendly**, and **hackatho
 - **GitHub Data Sync** - Manual sync to fetch and cache GitHub statistics from API
 - **Statistics Display** - Real-time display of repositories, languages, commits, stars, and forks
 - **Enhanced Repository Data** - Detailed repo information including descriptions, topics, languages, and metadata
+- **Design & Customization Page** - Full-featured portfolio design editor at `/dashboard/design`
+  - Drag-and-drop reordering of repositories and text sections
+  - Resizable boxes (stats, repos, text sections)
+  - Theme selection (light, dark, system, blue, pink)
+  - Layout selection (default, classic, compact)
+  - Custom text sections (add, edit, delete)
+  - Pin/unpin repositories (up to 6)
+  - Show/hide statistics cards
+  - Live preview with real-time updates
+  - Two-column layout (controls left, preview right)
+- **Portfolio Configuration Backend** - Extended PortfolioConfig model to store:
+  - Layout preferences
+  - Theme preferences
+  - Pinned repositories
+  - Custom text sections
+  - Item ordering
+  - Item sizes
+  - Visible statistics configuration
+- **Export Page Structure** - Export page at `/dashboard/export` with loading and success states (export functionality to be implemented)
 
 ### 🚧 In Progress / Planned
 
-- **Design & Customization Page** - Layout editor for customizing portfolio appearance
 - **Public Profile** - Shareable profile page at `/u/:username`
-- **Layout Customization** - Drag-and-drop layout editor for portfolio sections with pin/unpin repos
-- **Theme Customization** - Custom color schemes and styling options
-- **Export Functionality** - Client-side export to PNG/PDF using `html2canvas` and `jsPDF`
+- **Export Functionality** - Actual PNG/PDF generation using `html2canvas` and `jsPDF`
+- **Portfolio View Page** - Render the actual portfolio using saved configuration
 
 ---
 
@@ -36,7 +53,6 @@ This project is designed to be **no-AI**, **free-tier friendly**, and **hackatho
 - **Backend**: Node.js + Express 5
 - **Database**: MongoDB Atlas (Mongoose ODM)
 - **Authentication**: GitHub OAuth (Authorization Code) + JWT with httpOnly cookies
-- **Charts**: Recharts (planned)
 - **Export**: `html2canvas` + `jsPDF` (planned)
 
 ---
@@ -47,16 +63,16 @@ This project is designed to be **no-AI**, **free-tier friendly**, and **hackatho
 VistoAPP/
 ├── client/                 # React frontend
 │   ├── src/
-│   │   ├── components/    # Reusable components (ProtectedRoute, LoadingSpinner)
-│   │   ├── pages/         # Page components (Login, Dashboard, Home, About, Contact)
-│   │   ├── store/         # Zustand stores (authStore, statsStore)
+│   │   ├── components/    # Reusable components (ProtectedRoute, LoadingSpinner, RepoCard)
+│   │   ├── pages/         # Page components (Login, Dashboard, Design, Export, Home, About, Contact)
+│   │   ├── store/         # Zustand stores (authStore, statsStore, configStore)
 │   │   ├── utils/         # Utilities (API client)
 │   │   └── App.jsx        # Main app component with routing
 │   └── package.json
 │
 ├── server/                 # Express backend
-│   ├── models/            # Mongoose models (User, StatsCache)
-│   ├── routes/            # API routes (auth.js, stats.js)
+│   ├── models/            # Mongoose models (User, StatsCache, PortfolioConfig)
+│   ├── routes/            # API routes (auth.js, stats.js, config.js)
 │   ├── middleware/        # Express middleware (authMiddleware)
 │   ├── index.js           # Server entry point
 │   └── package.json
@@ -173,7 +189,7 @@ Create a `.env` file in the `client/` directory (optional, defaults provided):
 VITE_API_URL=http://localhost:3000
 ```
 
-**Note**: Never commit `.env` files with real secrets to version control. Use `.env.example` files for documentation (to be added).
+**Note**: Never commit `.env` files with real secrets to version control.
 
 ---
 
@@ -217,11 +233,57 @@ Vite will start the React app on `http://localhost:5173`.
   - Fetches repositories, languages, commits, and aggregates statistics
   - Stores detailed repo information (description, topics, stars, forks, etc.)
 
+### Configuration Routes (`/config`)
+
+- `GET /config` - Get current user's portfolio configuration (requires JWT)
+  - Returns: layout, theme, pinnedRepos, customTextSections, itemOrder, itemSizes, visibleStats
+- `PUT /config` - Create or update portfolio configuration (requires JWT)
+  - Accepts: layout, theme, pinnedRepos, customTextSections, itemOrder, itemSizes, visibleStats
+  - Supports partial updates (only provided fields are updated)
+
 ### Other Routes
 
 - `GET /` - Health check endpoint
 - `GET /about` - About page (placeholder)
 - `GET /contact` - Contact page (placeholder)
+
+---
+
+## Database Models
+
+### User
+- `username` - GitHub username
+- `githubId` - GitHub user ID
+- `avatarUrl` - GitHub avatar URL
+- `accessToken` - Encrypted GitHub access token
+- `createdAt` - Account creation timestamp
+- `lastSyncAt` - Last sync timestamp
+
+### StatsCache
+- `userId` - Reference to User
+- `repositoryCount` - Total number of repositories
+- `totalStars` - Total stars across all repos
+- `totalForks` - Total forks across all repos
+- `totalCommits` - Total commits across all repos
+- `languages` - Object with language percentages
+- `recentCommits` - Recent commit count
+- `repositories` - Array of detailed repository objects
+  - Includes: githubId, name, fullName, description, url, htmlUrl, stars, forks, watchers, language, languages, topics, dates, etc.
+- `syncedAt` - Last sync timestamp
+
+### PortfolioConfig
+- `userId` - Reference to User
+- `layout` - Layout style ('default', 'classic', 'compact')
+- `theme` - Color theme ('light', 'dark', 'system', 'blue', 'pink')
+- `pinnedRepos` - Array of GitHub repo IDs (max 6)
+- `customTextSections` - Array of custom text sections (max 10)
+  - Each section: id, title (max 200 chars), content (max 5000 chars)
+- `itemOrder` - Array of item IDs in display order (e.g., ['repo-123', 'text-456'])
+- `itemSizes` - Object mapping item IDs to custom sizes { width, height }
+- `visibleStats` - Array of stat configurations (max 3)
+  - Each stat: id ('repos', 'stars', 'commits'), label, visible (boolean)
+- `createdAt` - Configuration creation timestamp
+- `updatedAt` - Last update timestamp
 
 ---
 
@@ -236,6 +298,7 @@ Vite will start the React app on `http://localhost:5173`.
 - ✅ **Private dashboard view** - Completed
   - User profile display with GitHub avatar
   - Real-time statistics cards (repositories, languages, commits)
+  - Recent repositories display (last 6)
   - Sync button for refreshing GitHub data
   - Protected routes implementation
 
@@ -247,28 +310,38 @@ Vite will start the React app on `http://localhost:5173`.
   - Frontend stats store (Zustand) for state management
   - Automatic stats fetching on dashboard load
 
-- 📋 **Public profile at `/u/:username`** - Planned
-  - Public-facing portfolio page
+- ✅ **Design & Customization Page** - Completed
+  - Design page at `/dashboard/design` with two-column layout
+  - Drag-and-drop reordering for repositories, text sections, and stats
+  - Resizable boxes (stats cards, repo cards, text sections)
+  - Theme selection (5 themes: light, dark, system, blue, pink)
+  - Layout selection (3 layouts: default, classic, compact)
+  - Custom text sections (add, edit, delete, reorder)
+  - Pin/unpin repositories (up to 6)
+  - Show/hide statistics cards
+  - Live preview with real-time updates
+  - Save configuration functionality
+  - Export page structure (export functionality to be implemented)
+
+- ✅ **Portfolio Configuration Backend** - Completed
+  - Extended PortfolioConfig model with all customization fields
+  - GET/PUT `/config` endpoints with validation
+  - Partial update support
+  - Frontend configStore (Zustand) for state management
+
+- 📋 **Public Profile Page** - Planned
+  - Public-facing portfolio page at `/u/:username`
+  - Render portfolio using saved configuration
   - Shareable URL generation
   - Profile customization visibility
 
-- 🚧 **Layout + theme customization** - Next up
-  - Design page at `/dashboard/design`
-  - Pin/unpin repositories
-  - Drag-and-drop section reordering
-  - Section visibility toggles
-  - Color theme selection
-  - Save/load layout configurations
-
-- 📋 **Export profile to PNG/PDF** - Planned
-  - Client-side rendering with `html2canvas`
-  - PDF generation with `jsPDF`
-  - Download functionality
+- 📋 **Export Functionality** - Planned
+  - Implement PNG export using `html2canvas`
+  - Implement PDF export using `jsPDF`
+  - Download functionality on export page
 
 ---
 
 ## License
 
 MIT – feel free to use and adapt for your own portfolio or hackathon projects.
-
-

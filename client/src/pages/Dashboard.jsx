@@ -226,7 +226,7 @@ const Dashboard = () => {
                             <p className="text-gray-600 mb-6">
                                 Your GitHub statistics will appear here after you sync your data from GitHub.
                             </p>
-                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                            <div className="bg-linear-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
                                 <p className="text-sm text-blue-900">
                                     <strong className="font-semibold">💡 Get Started:</strong> Click "Sync GitHub Data" above to fetch your repository statistics, then design your portfolio.
                                 </p>

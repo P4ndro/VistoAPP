@@ -185,11 +185,19 @@ NODE_ENV=development
 
 ### Frontend (`client/.env`)
 
-Create a `.env` file in the `client/` directory (optional, defaults provided):
+Create a `.env` file in the `client/` directory (optional, defaults to `http://localhost:3000`):
 
+**For local development:**
 ```env
 VITE_API_URL=http://localhost:3000
 ```
+
+**For production deployment:**
+```env
+VITE_API_URL=https://your-backend-url.onrender.com
+```
+
+**Note**: Replace `https://your-backend-url.onrender.com` with your actual deployed backend URL.
 
 **Note**: Never commit `.env` files with real secrets to version control.
 

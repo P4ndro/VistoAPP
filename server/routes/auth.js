@@ -29,7 +29,10 @@ router.get('/github', authLimiter, (req, res) => {
         return res.status(500).json({ error: 'GitHub OAuth not configured' });
     }
 
-    const redirectUri = `${req.protocol}://${req.get('host')}/auth/github/callback`;
+    // Handle proxy headers (for Render, Heroku, etc.)
+    const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+    const host = req.get('x-forwarded-host') || req.get('host');
+    const redirectUri = `${protocol}://${host}/auth/github/callback`;
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user:email,repo`;
     res.redirect(githubAuthUrl);
 });

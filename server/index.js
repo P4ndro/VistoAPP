@@ -15,6 +15,9 @@ import { logError, logInfo } from './utils/logger.js';
 
 const app = express();
 
+// Trust proxy (needed for Render, Heroku, etc.)
+app.set('trust proxy', 1);
+
 const port = process.env.PORT || 3000;
 
 // Security: Helmet.js for comprehensive security headers

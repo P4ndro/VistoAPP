@@ -3,14 +3,26 @@ import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { authLimiter } from '../middleware/rateLimiter.js';
+import { encrypt } from '../utils/encryption.js';
+import { logError, logInfo } from '../utils/logger.js';
 
 
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
-router.get('/github', (req, res) => {
+// Get JWT_SECRET at runtime (after dotenv loads)
+const getJWTSecret = () => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret && process.env.NODE_ENV === 'production') {
+        logError('ERROR: JWT_SECRET is required in production');
+        process.exit(1);
+    }
+    return secret;
+};
+
+router.get('/github', authLimiter, (req, res) => {
     const CLIENT_ID = process.env.GITHUB_CLIENT_ID;
     
     if (!CLIENT_ID) {
@@ -22,7 +34,7 @@ router.get('/github', (req, res) => {
     res.redirect(githubAuthUrl);
 });
 
-router.get('/github/callback', async (req, res) => {
+router.get('/github/callback', authLimiter, async (req, res) => {
     const { code } = req.query;
     const CLIENT_ID = process.env.GITHUB_CLIENT_ID;
     const CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
@@ -60,10 +72,17 @@ router.get('/github/callback', async (req, res) => {
 
         const { id, login, avatar_url } = userResponse.data;
 
+        // Encrypt access token before storing
+        const encryptedToken = encrypt(access_token);
+        if (!encryptedToken) {
+            logError('Failed to encrypt access token');
+            return res.redirect(`${CLIENT_URL}/login?error=auth_failed`);
+        }
+
         let user = await User.findOne({ githubId: id.toString() });
 
         if (user) {
-            user.accessToken = access_token;
+            user.accessToken = encryptedToken;
             user.avatarUrl = avatar_url || user.avatarUrl;
             await user.save();
         } else {
@@ -71,8 +90,14 @@ router.get('/github/callback', async (req, res) => {
                 githubId: id.toString(),
                 username: login,
                 avatarUrl: avatar_url,
-                accessToken: access_token,
+                accessToken: encryptedToken,
             });
+        }
+
+        const JWT_SECRET = getJWTSecret();
+        if (!JWT_SECRET) {
+            logError('JWT_SECRET not available');
+            return res.redirect(`${CLIENT_URL}/login?error=auth_failed`);
         }
 
         const token = jwt.sign(
@@ -88,9 +113,10 @@ router.get('/github/callback', async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
 
+        logInfo('User authenticated successfully', { username: login, userId: user._id });
         res.redirect(`${CLIENT_URL}/dashboard`);
     } catch (error) {
-        console.error('GitHub OAuth error:', error.message);
+        logError('GitHub OAuth error', error);
         res.redirect(`${CLIENT_URL}/login?error=auth_failed`);
     }
 });

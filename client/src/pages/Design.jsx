@@ -378,6 +378,8 @@ const Design = () => {
         if (result.success) {
             console.log('Portfolio settings saved successfully!');
         }
+
+        return result;
     };
 
     // Theme colors mapping
@@ -440,11 +442,9 @@ const Design = () => {
                             </div>
                             <button
                                 onClick={async () => {
-                                    // Save before navigating
-                                    const result = await handleSave();
-                                    if (result.success) {
-                                        navigate('/dashboard/export');
-                                    }
+                                    // Save before navigating (but navigate regardless of result)
+                                    await handleSave();
+                                    navigate('/dashboard/export');
                                 }}
                                 disabled={isSaving}
                                 className="px-6 py-3 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"

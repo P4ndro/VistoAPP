@@ -32,7 +32,7 @@ function About() {
                 </p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 md:p-10">
                 {loading ? (
                     <div className="flex justify-center py-12">
                         <LoadingSpinner size="lg" text="Loading..." />
@@ -43,9 +43,31 @@ function About() {
                     </div>
                 ) : (
                     <div className="prose prose-lg max-w-none">
-                        <p className="text-gray-700 leading-relaxed">
+                        <p className="text-gray-700 leading-relaxed text-lg mb-6">
                             {message || 'Welcome to VistoAPP! This platform helps developers showcase their GitHub activity and create stunning portfolios.'}
                         </p>
+                        <div className="mt-8 pt-8 border-t border-gray-200">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-4">What is VistoAPP?</h2>
+                            <p className="text-gray-700 leading-relaxed mb-4">
+                                VistoAPP is a MERN-stack application that transforms your GitHub activity into a beautiful, 
+                                customizable developer portfolio. Whether you're looking to showcase your work to potential 
+                                employers, clients, or the developer community, VistoAPP makes it easy to create a professional 
+                                portfolio that reflects your coding journey.
+                            </p>
+                            <h3 className="text-xl font-semibold text-gray-900 mt-6 mb-3">Key Features</h3>
+                            <ul className="list-disc list-inside text-gray-700 space-y-2 mb-6">
+                                <li>Connect with GitHub OAuth for secure authentication</li>
+                                <li>Sync and display your repository statistics, commits, and languages</li>
+                                <li>Customize your portfolio with multiple themes and layouts</li>
+                                <li>Pin your favorite repositories and add custom text sections</li>
+                                <li>Export your portfolio as PNG or PDF</li>
+                                <li>Save multiple portfolio versions with tags</li>
+                            </ul>
+                            <p className="text-gray-700 leading-relaxed">
+                                Built with modern technologies including React, Node.js, Express, and MongoDB, 
+                                VistoAPP is designed to be fast, responsive, and user-friendly.
+                            </p>
+                        </div>
                     </div>
                 )}
             </div>

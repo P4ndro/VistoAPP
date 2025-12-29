@@ -1,8 +1,8 @@
-# VistoAPP (DevLens)
+# Visto
 
-VistoAPP is a MERN-stack MVP that turns your GitHub activity into a customizable, shareable developer portfolio.
+Visto is a MERN-stack application that transforms your GitHub activity into a beautiful, customizable developer portfolio.
 
-This project is designed to be **no-AI**, **free-tier friendly**, and **hackathon-ready**.
+This is a personal project built by **Sandro Iobidze** as his first solo project on his journey to becoming a MERN stack developer. The project is designed to be **no-AI**, **free-tier friendly**, and **production-ready**.
 
 ---
 
@@ -36,13 +36,13 @@ This project is designed to be **no-AI**, **free-tier friendly**, and **hackatho
   - Item ordering
   - Item sizes
   - Visible statistics configuration
-- **Export Page Structure** - Export page at `/dashboard/export` with loading and success states (export functionality to be implemented)
+- **Export Functionality** - Full PNG/PDF export using `html2canvas` and `jsPDF`
+- **Export History** - Save and tag exports for easy access
+- **View Saved Exports** - View previously saved portfolio exports
 
-### 🚧 In Progress / Planned
+### 🚧 Future Enhancements
 
-- **Public Profile** - Shareable profile page at `/u/:username`
-- **Export Functionality** - Actual PNG/PDF generation using `html2canvas` and `jsPDF`
-- **Portfolio View Page** - Render the actual portfolio using saved configuration
+- **Public Profile** - Shareable profile page at `/u/:username` (optional feature)
 
 ---
 
@@ -53,14 +53,15 @@ This project is designed to be **no-AI**, **free-tier friendly**, and **hackatho
 - **Backend**: Node.js + Express 5
 - **Database**: MongoDB Atlas (Mongoose ODM)
 - **Authentication**: GitHub OAuth (Authorization Code) + JWT with httpOnly cookies
-- **Export**: `html2canvas` + `jsPDF` (planned)
+- **Export**: `html2canvas-pro` + `jsPDF`
+- **Security**: Helmet.js, Rate Limiting, Token Encryption
 
 ---
 
 ## Project Structure
 
 ```
-VistoAPP/
+Visto/
 ├── client/                 # React frontend
 │   ├── src/
 │   │   ├── components/    # Reusable components (ProtectedRoute, LoadingSpinner, RepoCard)
@@ -113,7 +114,7 @@ To enable GitHub OAuth, you'll need to create a GitHub OAuth App:
 1. Go to GitHub Settings → Developer settings → OAuth Apps
 2. Click "New OAuth App"
 3. Fill in:
-   - **Application name**: VistoAPP (or your choice)
+   - **Application name**: Visto (or your choice)
    - **Homepage URL**: `http://localhost:5173` (or your frontend URL)
    - **Authorization callback URL**: `http://localhost:3000/auth/github/callback` (or your backend URL + `/auth/github/callback`)
 4. Copy the **Client ID** and **Client Secret**
@@ -173,7 +174,8 @@ Create a `.env` file in the `server/` directory:
 DATABASE_URL=<your-mongodb-atlas-connection-string>
 # Alternative: MONGO_URI=<your-mongodb-atlas-connection-string>
 
-JWT_SECRET=<your-random-jwt-secret-key>
+JWT_SECRET=<your-random-jwt-secret-key-min-32-chars>
+ENCRYPTION_KEY=<your-encryption-key-optional-falls-back-to-jwt-secret>
 GITHUB_CLIENT_ID=<your-github-oauth-app-client-id>
 GITHUB_CLIENT_SECRET=<your-github-oauth-app-client-secret>
 CLIENT_URL=http://localhost:5173
@@ -241,11 +243,18 @@ Vite will start the React app on `http://localhost:5173`.
   - Accepts: layout, theme, pinnedRepos, customTextSections, itemOrder, itemSizes, visibleStats
   - Supports partial updates (only provided fields are updated)
 
+### Export Routes (`/exports`)
+
+- `GET /exports` - Get all saved exports for authenticated user (requires JWT)
+- `GET /exports/:id` - Get a single export by ID (requires JWT)
+- `POST /exports` - Save a new export (requires JWT)
+- `DELETE /exports/:id` - Delete an export (requires JWT)
+
 ### Other Routes
 
 - `GET /` - Health check endpoint
-- `GET /about` - About page (placeholder)
-- `GET /contact` - Contact page (placeholder)
+- `GET /about` - About page information
+- `GET /contact` - Contact page information
 
 ---
 
@@ -321,7 +330,8 @@ Vite will start the React app on `http://localhost:5173`.
   - Show/hide statistics cards
   - Live preview with real-time updates
   - Save configuration functionality
-  - Export page structure (export functionality to be implemented)
+  - Export functionality (PNG/PDF generation)
+  - Export history and saved exports
 
 - ✅ **Portfolio Configuration Backend** - Completed
   - Extended PortfolioConfig model with all customization fields
@@ -329,19 +339,45 @@ Vite will start the React app on `http://localhost:5173`.
   - Partial update support
   - Frontend configStore (Zustand) for state management
 
-- 📋 **Public Profile Page** - Planned
+- ✅ **Security Features** - Completed
+  - Token encryption at rest (AES encryption)
+  - Rate limiting (general, sync, and auth endpoints)
+  - Helmet.js security headers
+  - Secure logging with sensitive data filtering
+  - Input validation and sanitization
+  - Production-ready error handling
+
+- ✅ **Export Functionality** - Completed
+  - PNG export using `html2canvas-pro`
+  - PDF export using `jsPDF`
+  - Export history with tags
+  - View saved exports with modal preview
+  - Download functionality
+
+- 📋 **Public Profile Page** - Future Enhancement
   - Public-facing portfolio page at `/u/:username`
   - Render portfolio using saved configuration
   - Shareable URL generation
   - Profile customization visibility
 
-- 📋 **Export Functionality** - Planned
-  - Implement PNG export using `html2canvas`
-  - Implement PDF export using `jsPDF`
-  - Download functionality on export page
+---
+
+## About the Developer
+
+This project was built by **Sandro Iobidze** as his first solo project on his journey to becoming a MERN stack developer. It represents a complete full-stack application combining React, Node.js, Express, and MongoDB.
+
+## Security
+
+This application includes enterprise-level security features:
+- **Token Encryption** - Access tokens encrypted at rest using AES encryption
+- **Rate Limiting** - Protection against abuse (general API, sync, and auth endpoints)
+- **Security Headers** - Comprehensive headers via Helmet.js
+- **Secure Logging** - Automatic filtering of sensitive data in logs
+- **Input Validation** - All inputs sanitized and validated
+- **Production-Ready** - Error handling and environment-based configurations
 
 ---
 
 ## License
 
-MIT – feel free to use and adapt for your own portfolio or hackathon projects.
+MIT – feel free to use and adapt for your own portfolio or learning projects.

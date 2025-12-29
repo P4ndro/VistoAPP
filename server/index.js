@@ -15,6 +15,8 @@ import { logError, logInfo } from './utils/logger.js';
 
 const app = express();
 
+const port = process.env.PORT || 3000;
+
 // Security: Helmet.js for comprehensive security headers
 app.use(helmet({
     contentSecurityPolicy: {

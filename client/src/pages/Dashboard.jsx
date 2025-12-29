@@ -2,15 +2,19 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import useAuthStore from '../store/authStore';
 import useStatsStore from '../store/statsStore';
+import useExportsStore from '../store/exportsStore';
 import ProtectedRoute from '../components/ProtectedRoute';
 import LoadingSpinner from '../components/LoadingSpinner';
 import RepoCard from '../components/RepoCard';
+import ViewExportModal from '../components/ViewExportModal';
 
 const Dashboard = () => {
     const navigate = useNavigate();
     const { user, logout } = useAuthStore();
     const { stats, isLoading, isSyncing, error, fetchStats, syncStats } = useStatsStore();
+    const { exports: savedExports, isLoading: exportsLoading, error: exportsError, fetchExports, deleteExport } = useExportsStore();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [viewingExportId, setViewingExportId] = useState(null);
 
     
     const repositories = stats?.repositories || [];
@@ -31,8 +35,8 @@ const Dashboard = () => {
 
     useEffect(() => {
         fetchStats();
-        
-    }, []);
+        fetchExports();
+    }, [fetchStats, fetchExports]);
 
     const handleLogout = async () => {
         setIsLoggingOut(true);
@@ -118,9 +122,16 @@ const Dashboard = () => {
                             <button
                                 onClick={handleSync}
                                 disabled={isSyncing || isLoading}
-                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-md active:scale-95"
                             >
-                                {isSyncing ? 'Syncing...' : 'Sync GitHub Data'}
+                                {isSyncing ? (
+                                    <span className="flex items-center gap-2">
+                                        <LoadingSpinner size="sm" />
+                                        Syncing...
+                                    </span>
+                                ) : (
+                                    '🔄 Sync GitHub Data'
+                                )}
                             </button>
                             <Link
                                 to="/dashboard/design"
@@ -201,21 +212,132 @@ const Dashboard = () => {
 
                 {/* Info Section */}
                 {!stats && !isLoading && (
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
-                        <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">
-                            GitHub Statistics
-                        </h2>
-                        <p className="text-gray-600 mb-4">
-                            Your GitHub statistics will appear here after you sync your data from GitHub.
-                        </p>
-                        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                            <p className="text-sm text-blue-800">
-                                <strong>Next step:</strong> Click "Sync GitHub Data" above to fetch your repository statistics, then design your portfolio.
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8 text-center">
+                        <div className="max-w-md mx-auto">
+                            <div className="bg-gray-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                                <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-3">
+                                No Statistics Yet
+                            </h2>
+                            <p className="text-gray-600 mb-6">
+                                Your GitHub statistics will appear here after you sync your data from GitHub.
                             </p>
+                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                                <p className="text-sm text-blue-900">
+                                    <strong className="font-semibold">💡 Get Started:</strong> Click "Sync GitHub Data" above to fetch your repository statistics, then design your portfolio.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 )}
                 
+                {/* Saved Exports Section */}
+                <div className="mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl md:text-2xl font-bold text-gray-900">
+                            Saved Exports
+                        </h2>
+                        <Link
+                            to="/dashboard/export"
+                            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                            Export Portfolio →
+                        </Link>
+                    </div>
+                    {exportsLoading ? (
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
+                            <div className="flex justify-center items-center py-8">
+                                <LoadingSpinner />
+                            </div>
+                        </div>
+                    ) : savedExports && savedExports.length > 0 ? (
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {savedExports.map((exportItem) => (
+                                    <div
+                                        key={exportItem._id}
+                                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-gray-300 transition-all duration-200 bg-white"
+                                    >
+                                        <div className="flex items-start justify-between mb-2">
+                                            <h3 className="font-semibold text-gray-900 text-sm">
+                                                {exportItem.tag}
+                                            </h3>
+                                            <button
+                                                onClick={async () => {
+                                                    if (window.confirm('Are you sure you want to delete this export?')) {
+                                                        await deleteExport(exportItem._id);
+                                                        fetchExports(); // Refresh list
+                                                    }
+                                                }}
+                                                className="text-red-600 hover:text-red-700 text-xs"
+                                                title="Delete export"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mb-3">
+                                            {new Date(exportItem.createdAt).toLocaleDateString('en-US', {
+                                                year: 'numeric',
+                                                month: 'short',
+                                                day: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                            })}
+                                        </p>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
+                                                {exportItem.exportData?.format || 'Export'}
+                                            </span>
+                                            <button
+                                                onClick={() => setViewingExportId(exportItem._id)}
+                                                className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-all duration-200 hover:scale-105 active:scale-95"
+                                                title="View export"
+                                            >
+                                                👁️ View
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 md:p-12 text-center">
+                            <div className="max-w-sm mx-auto">
+                                <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Exports Yet</h3>
+                                <p className="text-gray-600 text-sm mb-4">
+                                    Export your portfolio and add a tag to save it here for easy access.
+                                </p>
+                                <Link
+                                    to="/dashboard/export"
+                                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+                                >
+                                    Go to Export Page →
+                                </Link>
+                            </div>
+                        </div>
+                    )}
+                    {exportsError && (
+                        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+                            <p className="text-sm text-red-800">{exportsError}</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* View Export Modal */}
+                <ViewExportModal
+                    exportId={viewingExportId}
+                    isOpen={!!viewingExportId}
+                    onClose={() => setViewingExportId(null)}
+                />
+
                 {stats && (
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
                         <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">

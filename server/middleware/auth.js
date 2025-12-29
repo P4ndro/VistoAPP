@@ -1,10 +1,26 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { logError } from '../utils/logger.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+// Get JWT_SECRET at runtime (after dotenv loads)
+const getJWTSecret = () => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        logError('ERROR: JWT_SECRET is not defined in .env file');
+        if (process.env.NODE_ENV === 'production') {
+            process.exit(1);
+        }
+    }
+    return secret;
+};
 
 export const authMiddleware = async (req, res, next) => {
     try {
+        const JWT_SECRET = getJWTSecret();
+        if (!JWT_SECRET) {
+            return res.status(500).json({ error: 'Server configuration error' });
+        }
+
         // Extract token from cookie or Authorization header
         const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
 

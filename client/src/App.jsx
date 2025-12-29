@@ -37,9 +37,11 @@ const Navigation = () => {
           <div className="flex items-center">
             <Link 
               to="/" 
-              className="text-xl font-bold text-gray-900 mr-8 hover:text-gray-700 transition-colors"
+              className="text-xl font-bold text-gray-900 mr-8 hover:text-gray-700 transition-all duration-200 hover:scale-105"
             >
-              VistoAPP
+              <span className="bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                VistoAPP
+              </span>
             </Link>
             <div className="hidden md:flex space-x-1">
               <NavLink to="/">Home</NavLink>

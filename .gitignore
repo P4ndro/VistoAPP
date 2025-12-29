@@ -26,4 +26,6 @@ Thumbs.db
 .vscode/
 .idea/
 
-
+# Deployment
+.vercel
+.netlify

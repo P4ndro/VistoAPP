@@ -90,7 +90,7 @@ const Login = () => {
                 {/* GitHub Login Button */}
                 <button
                     onClick={handleLogin}
-                    className="w-full flex items-center justify-center gap-3 bg-gray-900 hover:bg-gray-800 text-white font-medium py-3 px-4 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 hover:shadow-md active:scale-[0.98]"
+                    className="w-full flex items-center justify-center gap-3 bg-gray-900 hover:bg-gray-800 text-white font-medium py-3 px-4 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 hover:shadow-lg active:scale-[0.98] transform"
                 >
                     <svg
                         className="w-5 h-5"

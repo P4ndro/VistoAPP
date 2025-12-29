@@ -3,6 +3,9 @@ import { authMiddleware } from '../middleware/auth.js';
 import StatsCache from '../models/StatsCache.js';
 import User from '../models/User.js';
 import axios from 'axios';
+import { syncLimiter } from '../middleware/rateLimiter.js';
+import { logError, logInfo } from '../utils/logger.js';
+import { decrypt } from '../utils/encryption.js';
 
 const router = express.Router();
 
@@ -18,12 +21,12 @@ router.get('/', authMiddleware, async (req, res) => {
         }
         return res.status(200).json({ stats });
     } catch (error) {
-        console.error('Error fetching stats:', error);
+        logError('Error fetching stats', error);
         return res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-router.post('/sync', authMiddleware, async (req, res) => {
+router.post('/sync', authMiddleware, syncLimiter, async (req, res) => {
     const { user } = req;
     if (!user) {
         return res.status(401).json({ error: 'Unauthorized' });
@@ -36,8 +39,15 @@ router.post('/sync', authMiddleware, async (req, res) => {
             return res.status(400).json({ error: 'GitHub access token not found. Please re-authenticate.' });
         }
 
+        // Decrypt access token
+        const accessToken = decrypt(userWithToken.accessToken);
+        if (!accessToken) {
+            logError('Failed to decrypt access token for user', { userId: user._id });
+            return res.status(400).json({ error: 'GitHub access token invalid. Please re-authenticate.' });
+        }
+
         const authHeaders = {
-            Authorization: `Bearer ${userWithToken.accessToken}`,
+            Authorization: `Bearer ${accessToken}`,
             Accept: 'application/vnd.github.v3+json'
         };
 
@@ -71,7 +81,7 @@ router.post('/sync', authMiddleware, async (req, res) => {
                     languageBytes[lang] = (languageBytes[lang] || 0) + bytes;
                 }
             } catch (langError) {
-                console.error(`Error fetching languages for ${repo.full_name}:`, langError.message);
+                logError(`Error fetching languages for ${repo.full_name}`, langError);
             }
 
             repositoriesArray.push({
@@ -127,7 +137,7 @@ router.post('/sync', authMiddleware, async (req, res) => {
                     }
                 } catch (repoCommitsError) {
                     if (repoCommitsError.response?.status !== 409) {
-                        console.error(`Error fetching commits for ${repo.full_name}:`, repoCommitsError.message);
+                        logError(`Error fetching commits for ${repo.full_name}`, repoCommitsError);
                     }
                 }
             }
@@ -144,14 +154,14 @@ router.post('/sync', authMiddleware, async (req, res) => {
                     return sum + commitCount;
                 }, 0);
             } catch (eventsError) {
-                console.error('Error fetching commit events:', eventsError.message);
+                logError('Error fetching commit events', eventsError);
             }
             
             if (recentCommits === 0 && totalCommits > 0) {
                 recentCommits = totalCommits;
             }
         } catch (error) {
-            console.error('Error fetching commits:', error.message);
+            logError('Error fetching commits', error);
         }
 
         const updateData = {
@@ -191,15 +201,14 @@ router.post('/sync', authMiddleware, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error syncing stats:', error);
+        logError('Error syncing stats', error);
         
         if (error.response?.status === 401) {
             return res.status(401).json({ error: 'GitHub authentication failed. Please re-authenticate.' });
         }
         
         return res.status(500).json({ 
-            error: 'Internal server error',
-            message: error.message 
+            error: 'Internal server error'
         });
     }
 });

@@ -1,68 +1,105 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useConfigStore from '../store/configStore';
 import useStatsStore from '../store/statsStore';
 import useAuthStore from '../store/authStore';
+import useExportsStore from '../store/exportsStore';
 import ProtectedRoute from '../components/ProtectedRoute';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { exportToPNG, exportToPDF } from '../utils/exportUtils';
+import PortfolioRenderer from '../components/PortfolioRenderer'; 
 
 const Export = () => {
     const navigate = useNavigate();
     const { user } = useAuthStore();
     const { config, fetchConfig } = useConfigStore();
     const { stats, fetchStats } = useStatsStore();
-    const [isExporting, setIsExporting] = useState(false);
-    const [exportProgress, setExportProgress] = useState(0);
-    const [exportComplete, setExportComplete] = useState(false);
+    const { saveExport } = useExportsStore();
+    const [exportError, setExportError] = useState(null);
+    const [exportTag, setExportTag] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const [lastExportType, setLastExportType] = useState(null); // 'PNG' or 'PDF'
+    const portfolioRef = useRef(null);
 
     useEffect(() => {
         fetchConfig();
         fetchStats();
     }, [fetchConfig, fetchStats]);
 
-    useEffect(() => {
-        if (config && stats && !exportComplete && !isExporting) {
-            startExport();
+    const handleDownloadPNG = async () => {
+        if (!portfolioRef.current) {
+            setExportError('Portfolio not ready. Please try again.');
+            return;
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [config, stats]);
 
-    const startExport = async () => {
-        setIsExporting(true);
-        setExportProgress(0);
-
-        // Simulate export progress
-        const progressInterval = setInterval(() => {
-            setExportProgress(prev => {
-                if (prev >= 90) {
-                    clearInterval(progressInterval);
-                    return 90;
-                }
-                return prev + 10;
-            });
-        }, 200);
-
-        // In a real implementation, this would:
-        // 1. Render the portfolio to a canvas using html2canvas
-        // 2. Generate PDF using jsPDF
-        // 3. Download the files
-
-        // Simulate export process
-        setTimeout(() => {
-            clearInterval(progressInterval);
-            setExportProgress(100);
-            setTimeout(() => {
-                setIsExporting(false);
-                setExportComplete(true);
-            }, 500);
-        }, 2000);
+        try {
+            setExportError(null);
+            const filename = `${user?.username || 'portfolio'}_portfolio.png`;
+            await exportToPNG(portfolioRef.current, filename);
+            setLastExportType('PNG');
+            
+            // Auto-save if tag is provided
+            if (exportTag.trim()) {
+                await handleSaveExport('PNG');
+            }
+        } catch (error) {
+            console.error('PNG export error:', error);
+            const errorMessage = error?.message || 'Unknown error occurred';
+            setExportError(`Failed to export PNG: ${errorMessage}. Please check the browser console for details.`);
+        }
     };
 
-    const handleDownload = (format) => {
-        // TODO: Implement actual download logic
-        console.log(`Downloading as ${format}...`);
-        // For now, just show a message
-        alert(`${format} export would be downloaded here. Implementation coming soon!`);
+    const handleDownloadPDF = async () => {
+        if (!portfolioRef.current) {
+            setExportError('Portfolio not ready. Please try again.');
+            return;
+        }
+
+        try {
+            setExportError(null);
+            const filename = `${user?.username || 'portfolio'}_portfolio.pdf`;
+            await exportToPDF(portfolioRef.current, filename);
+            setLastExportType('PDF');
+            
+            // Auto-save if tag is provided
+            if (exportTag.trim()) {
+                await handleSaveExport('PDF');
+            }
+        } catch (error) {
+            console.error('PDF export error:', error);
+            const errorMessage = error?.message || 'Unknown error occurred';
+            setExportError(`Failed to export PDF: ${errorMessage}. Please check the browser console for details.`);
+        }
+    };
+
+    const handleSaveExport = async (format) => {
+        if (!exportTag.trim()) {
+            setExportError('Please enter a tag to save this export.');
+            return;
+        }
+
+        setIsSaving(true);
+        setExportError(null);
+
+        try {
+            const result = await saveExport(exportTag.trim(), {
+                format,
+                config: config,
+                exportedAt: new Date().toISOString(),
+            });
+
+            if (result.success) {
+                setExportTag(''); // Clear tag after successful save
+                setLastExportType(null);
+            } else {
+                setExportError(result.error || 'Failed to save export');
+            }
+        } catch (error) {
+            console.error('Save export error:', error);
+            setExportError('Failed to save export. Please try again.');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     if (!config || !stats) {
@@ -75,133 +112,163 @@ const Export = () => {
         );
     }
 
-    if (isExporting) {
-        return (
-            <ProtectedRoute>
-                <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                    <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-8 max-w-md w-full mx-4">
-                        <div className="text-center">
-                            <LoadingSpinner size="lg" />
-                            <h2 className="text-2xl font-bold text-gray-900 mt-6 mb-2">
-                                Exporting Your Portfolio
-                            </h2>
-                            <p className="text-gray-600 mb-6">
-                                Please wait while we generate your portfolio...
-                            </p>
-                            <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
-                                <div
-                                    className="bg-blue-600 h-3 rounded-full transition-all duration-300"
-                                    style={{ width: `${exportProgress}%` }}
-                                ></div>
-                            </div>
-                            <p className="text-sm text-gray-500">{exportProgress}% complete</p>
-                        </div>
-                    </div>
-                </div>
-            </ProtectedRoute>
-        );
-    }
-
-    if (exportComplete) {
-        return (
-            <ProtectedRoute>
-                <div className="min-h-screen bg-gray-50 py-12">
-                    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-8">
-                            <div className="text-center mb-8">
-                                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <svg
-                                        className="w-8 h-8 text-green-600"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M5 13l4 4L19 7"
-                                        />
-                                    </svg>
-                                </div>
-                                <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                                    Export Complete!
-                                </h2>
-                                <p className="text-gray-600">
-                                    Your portfolio has been successfully generated.
-                                </p>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                                <button
-                                    onClick={() => handleDownload('PNG')}
-                                    className="flex items-center justify-center gap-3 p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
-                                >
-                                    <svg
-                                        className="w-6 h-6 text-gray-600"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                        />
-                                    </svg>
-                                    <div className="text-left">
-                                        <div className="font-semibold text-gray-900">Download PNG</div>
-                                        <div className="text-sm text-gray-500">High quality image</div>
-                                    </div>
-                                </button>
-
-                                <button
-                                    onClick={() => handleDownload('PDF')}
-                                    className="flex items-center justify-center gap-3 p-4 border-2 border-gray-300 rounded-lg hover:border-red-500 hover:bg-red-50 transition-colors"
-                                >
-                                    <svg
-                                        className="w-6 h-6 text-gray-600"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                                        />
-                                    </svg>
-                                    <div className="text-left">
-                                        <div className="font-semibold text-gray-900">Download PDF</div>
-                                        <div className="text-sm text-gray-500">Printable document</div>
-                                    </div>
-                                </button>
-                            </div>
-
-                            <div className="flex gap-4 justify-center">
-                                <button
-                                    onClick={() => navigate('/dashboard/design')}
-                                    className="px-6 py-2 bg-gray-200 text-gray-700 font-medium rounded-md hover:bg-gray-300 transition-colors"
-                                >
-                                    Back to Design
-                                </button>
+    return (
+        <ProtectedRoute>
+            <div className="min-h-screen bg-gray-50">
+                {/* Header */}
+                <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                        <div className="flex items-center justify-between">
+                            <div>
                                 <button
                                     onClick={() => navigate('/dashboard')}
-                                    className="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors"
+                                    className="text-blue-600 hover:text-blue-700 mb-2 inline-block transition-colors text-sm"
                                 >
-                                    Go to Dashboard
+                                    ← Back to Dashboard
                                 </button>
+                                <h1 className="text-2xl font-bold text-gray-900">Export Portfolio</h1>
                             </div>
                         </div>
                     </div>
                 </div>
-            </ProtectedRoute>
-        );
-    }
 
-    return null;
+                {/* Two Column Layout */}
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Left Column: Preview */}
+                        <div>
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                                <h2 className="text-lg font-semibold text-gray-900 mb-4">Preview</h2>
+                                <div ref={portfolioRef}>
+                                    <PortfolioRenderer config={config} stats={stats} user={user} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right Column: Export Options */}
+                        <div className="lg:sticky lg:top-20 lg:h-fit">
+                            <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6">
+                                <h2 className="text-lg font-semibold text-gray-900 mb-4">Export Options</h2>
+                                
+                                {/* Tag Input */}
+                                <div className="mb-6">
+                                    <label htmlFor="export-tag" className="block text-sm font-medium text-gray-700 mb-2">
+                                        Tag this export (optional)
+                                    </label>
+                                    <input
+                                        id="export-tag"
+                                        type="text"
+                                        value={exportTag}
+                                        onChange={(e) => setExportTag(e.target.value)}
+                                        placeholder="e.g., 'Portfolio v1', 'Job Application'"
+                                        maxLength={100}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Add a tag to save this export to your dashboard
+                                    </p>
+                                </div>
+
+                                {/* Error Message */}
+                                {exportError && (
+                                    <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
+                                        <p className="text-sm text-red-800">{exportError}</p>
+                                    </div>
+                                )}
+
+                                {/* Success Message */}
+                                {lastExportType && !exportTag.trim() && (
+                                    <div className="mb-6 bg-green-50 border border-green-200 rounded-md p-4">
+                                        <p className="text-sm text-green-800">
+                                            {lastExportType} exported successfully! Add a tag above to save it to your dashboard.
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Download Buttons */}
+                                <div className="space-y-4 mb-6">
+                                    <button
+                                        onClick={handleDownloadPNG}
+                                        className="w-full flex items-center justify-center gap-3 p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
+                                    >
+                                        <svg
+                                            className="w-6 h-6 text-gray-600"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                            />
+                                        </svg>
+                                        <div className="text-left">
+                                            <div className="font-semibold text-gray-900">Download PNG</div>
+                                            <div className="text-sm text-gray-500">High quality image</div>
+                                        </div>
+                                    </button>
+
+                                    <button
+                                        onClick={handleDownloadPDF}
+                                        className="w-full flex items-center justify-center gap-3 p-4 border-2 border-gray-300 rounded-lg hover:border-red-500 hover:bg-red-50 transition-colors"
+                                    >
+                                        <svg
+                                            className="w-6 h-6 text-gray-600"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                                            />
+                                        </svg>
+                                        <div className="text-left">
+                                            <div className="font-semibold text-gray-900">Download PDF</div>
+                                            <div className="text-sm text-gray-500">Printable document</div>
+                                        </div>
+                                    </button>
+                                </div>
+
+                                {/* Save Export Button (if tag is provided) */}
+                                {exportTag.trim() && lastExportType && (
+                                    <div className="mb-6">
+                                        <button
+                                            onClick={() => handleSaveExport(lastExportType)}
+                                            disabled={isSaving}
+                                            className="w-full px-4 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            {isSaving ? 'Saving...' : `Save ${lastExportType} Export`}
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Navigation Buttons */}
+                                <div className="space-y-2 pt-4 border-t border-gray-200">
+                                    <button
+                                        onClick={() => navigate('/dashboard/design')}
+                                        className="w-full px-4 py-2 bg-gray-200 text-gray-700 font-medium rounded-md hover:bg-gray-300 transition-colors"
+                                    >
+                                        Back to Design
+                                    </button>
+                                    <button
+                                        onClick={() => navigate('/dashboard')}
+                                        className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors"
+                                    >
+                                        Done - Go to Dashboard
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </ProtectedRoute>
+    );
 };
 
 export default Export;

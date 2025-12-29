@@ -1,6 +1,7 @@
 import express from 'express';
 import { authMiddleware } from '../middleware/auth.js';
 import PortfolioConfig from '../models/PortfolioConfig.js';
+import { logError } from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -46,7 +47,7 @@ router.get('/', authMiddleware, async (req, res) => {
             },
         });
     } catch (error) {
-        console.error('Error fetching config:', error);
+        logError('Error fetching config', error);
         return res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -73,20 +74,40 @@ router.put('/', authMiddleware, async (req, res) => {
         const update = {};
 
         if (layout !== undefined) {
+            const validLayouts = ['default', 'classic', 'compact'];
+            if (!validLayouts.includes(layout)) {
+                return res.status(400).json({ error: `Layout must be one of: ${validLayouts.join(', ')}` });
+            }
             update.layout = layout;
         }
         if (theme !== undefined) {
+            const validThemes = ['light', 'dark', 'system', 'blue', 'pink'];
+            if (!validThemes.includes(theme)) {
+                return res.status(400).json({ error: `Theme must be one of: ${validThemes.join(', ')}` });
+            }
             update.theme = theme;
         }
         if (pinnedRepos !== undefined) {
             if (!Array.isArray(pinnedRepos)) {
                 return res.status(400).json({ error: 'pinnedRepos must be an array' });
             }
+            // Validate array length
+            if (pinnedRepos.length > 6) {
+                return res.status(400).json({ error: 'Maximum 6 pinned repositories allowed' });
+            }
+            // Validate all items are numbers
+            if (!pinnedRepos.every(id => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
+                return res.status(400).json({ error: 'All pinned repo IDs must be positive integers' });
+            }
             update.pinnedRepos = pinnedRepos;
         }
         if (customTextSections !== undefined) {
             if (!Array.isArray(customTextSections)) {
                 return res.status(400).json({ error: 'customTextSections must be an array' });
+            }
+            // Validate array length
+            if (customTextSections.length > 10) {
+                return res.status(400).json({ error: 'Maximum 10 text sections allowed' });
             }
             // Validate each text section
             for (const section of customTextSections) {
@@ -96,11 +117,26 @@ router.put('/', authMiddleware, async (req, res) => {
                 if (!section.title || typeof section.title !== 'string') {
                     return res.status(400).json({ error: 'Each text section must have a title' });
                 }
+                // Sanitize and validate title length
+                const title = section.title.trim();
+                if (title.length === 0 || title.length > 200) {
+                    return res.status(400).json({ error: 'Title must be between 1 and 200 characters' });
+                }
                 if (section.content === undefined || typeof section.content !== 'string') {
                     return res.status(400).json({ error: 'Each text section must have content' });
                 }
+                // Sanitize and validate content length
+                const content = section.content.trim();
+                if (content.length > 5000) {
+                    return res.status(400).json({ error: 'Content cannot exceed 5000 characters' });
+                }
             }
-            update.customTextSections = customTextSections;
+            // Sanitize sections before saving
+            update.customTextSections = customTextSections.map(section => ({
+                id: section.id,
+                title: section.title.trim().substring(0, 200),
+                content: section.content.trim().substring(0, 5000)
+            }));
         }
         if (itemOrder !== undefined) {
             if (!Array.isArray(itemOrder)) {
@@ -164,7 +200,7 @@ router.put('/', authMiddleware, async (req, res) => {
             },
         });
     } catch (error) {
-        console.error('Error updating config:', error);
+        logError('Error updating config', error);
         if (error.name === 'ValidationError') {
             return res.status(400).json({ error: error.message });
         }

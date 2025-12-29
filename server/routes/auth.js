@@ -12,6 +12,19 @@ const router = express.Router();
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
+// Get backend URL - use env var if set, otherwise determine from environment
+const getBackendUrl = () => {
+    if (process.env.BACKEND_URL) {
+        return process.env.BACKEND_URL;
+    }
+    // In production on Render, use the known URL
+    if (process.env.NODE_ENV === 'production') {
+        return 'https://vistoapp-server.onrender.com';
+    }
+    // Development fallback
+    return 'http://localhost:3000';
+};
+
 // Get JWT_SECRET at runtime (after dotenv loads)
 const getJWTSecret = () => {
     const secret = process.env.JWT_SECRET;
@@ -29,10 +42,10 @@ router.get('/github', authLimiter, (req, res) => {
         return res.status(500).json({ error: 'GitHub OAuth not configured' });
     }
 
-    // Handle proxy headers (for Render, Heroku, etc.)
-    const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
-    const host = req.get('x-forwarded-host') || req.get('host');
-    const redirectUri = `${protocol}://${host}/auth/github/callback`;
+    // Use explicit backend URL to ensure it matches GitHub OAuth app settings
+    const backendUrl = getBackendUrl();
+    const redirectUri = `${backendUrl}/auth/github/callback`;
+    
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user:email,repo`;
     res.redirect(githubAuthUrl);
 });

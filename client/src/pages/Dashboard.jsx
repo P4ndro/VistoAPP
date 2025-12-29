@@ -7,6 +7,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import LoadingSpinner from '../components/LoadingSpinner';
 import RepoCard from '../components/RepoCard';
 import ViewExportModal from '../components/ViewExportModal';
+import SyncModal from '../components/SyncModal';
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -330,6 +331,9 @@ const Dashboard = () => {
                         </div>
                     )}
                 </div>
+
+                {/* Sync Modal */}
+                <SyncModal isOpen={isSyncing} />
 
                 {/* View Export Modal */}
                 <ViewExportModal

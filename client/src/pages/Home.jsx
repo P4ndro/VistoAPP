@@ -1,38 +1,15 @@
-import { useEffect, useState } from 'react';
-import { api } from '../utils/api';
 import { Link } from 'react-router-dom';
-import LoadingSpinner from '../components/LoadingSpinner';
 import useAuthStore from '../store/authStore';
 
 function Home() {
-    const [message, setMessage] = useState('');
-    const [loading, setLoading] = useState(true);
-    const [serverStatus, setServerStatus] = useState(null);
     const { isAuthenticated } = useAuthStore();
-
-    useEffect(() => {
-        api.get('/')
-            .then(res => {
-                setMessage(res.data.message || res.data);
-                setServerStatus('connected');
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error('Error fetching:', err);
-                setMessage('Unable to connect to server');
-                setServerStatus('disconnected');
-                setLoading(false);
-            });
-    }, []);
-
-    const isProduction = import.meta.env.PROD;
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="text-center mb-16">
                 <div className="mb-6">
                     <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                        Welcome to VistoAPP
+                        Welcome to Visto
                     </h1>
                     <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
                         Transform your GitHub activity into a beautiful, customizable developer portfolio
@@ -99,30 +76,6 @@ function Home() {
                     </p>
                 </div>
             </div>
-
-            {/* Server Status (only show in development) */}
-            {!isProduction && (
-                <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-sm font-semibold text-gray-700">Server Status</h2>
-                        {loading ? (
-                            <LoadingSpinner size="sm" />
-                        ) : (
-                            <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full ${serverStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                <span className={`text-sm font-medium ${serverStatus === 'connected' ? 'text-green-600' : 'text-red-600'}`}>
-                                    {serverStatus === 'connected' ? 'Connected' : 'Disconnected'}
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                    {!loading && (
-                        <p className={`text-sm mt-2 ${serverStatus === 'connected' ? 'text-green-700' : 'text-red-700'}`}>
-                            {message}
-                        </p>
-                    )}
-                </div>
-            )}
         </div>
     );
 }

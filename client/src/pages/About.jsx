@@ -25,7 +25,7 @@ function About() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="text-center mb-12">
                 <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                    About VistoAPP
+                    About Visto
                 </h1>
                 <p className="text-xl text-gray-600">
                     Transform your GitHub activity into a beautiful developer portfolio
@@ -44,15 +44,20 @@ function About() {
                 ) : (
                     <div className="prose prose-lg max-w-none">
                         <p className="text-gray-700 leading-relaxed text-lg mb-6">
-                            {message || 'Welcome to VistoAPP! This platform helps developers showcase their GitHub activity and create stunning portfolios.'}
+                            {message || 'Welcome to Visto! This platform helps developers showcase their GitHub activity and create stunning portfolios.'}
                         </p>
                         <div className="mt-8 pt-8 border-t border-gray-200">
-                            <h2 className="text-2xl font-bold text-gray-900 mb-4">What is VistoAPP?</h2>
+                            <h2 className="text-2xl font-bold text-gray-900 mb-4">About This Project</h2>
                             <p className="text-gray-700 leading-relaxed mb-4">
-                                VistoAPP is a MERN-stack application that transforms your GitHub activity into a beautiful, 
-                                customizable developer portfolio. Whether you're looking to showcase your work to potential 
-                                employers, clients, or the developer community, VistoAPP makes it easy to create a professional 
-                                portfolio that reflects your coding journey.
+                                Visto is a MERN-stack application that transforms your GitHub activity into a beautiful, 
+                                customizable developer portfolio. This is a personal project built by <strong>Sandro Iobidze</strong> 
+                                as part of his learning journey to become a MERN stack developer.
+                            </p>
+                            <p className="text-gray-700 leading-relaxed mb-4">
+                                This is my <strong>first project</strong> that I built completely on my own, combining all the 
+                                skills I've learned in React, Node.js, Express, and MongoDB. Whether you're looking to showcase 
+                                your work to potential employers, clients, or the developer community, Visto makes it easy to 
+                                create a professional portfolio that reflects your coding journey.
                             </p>
                             <h3 className="text-xl font-semibold text-gray-900 mt-6 mb-3">Key Features</h3>
                             <ul className="list-disc list-inside text-gray-700 space-y-2 mb-6">
@@ -65,7 +70,7 @@ function About() {
                             </ul>
                             <p className="text-gray-700 leading-relaxed">
                                 Built with modern technologies including React, Node.js, Express, and MongoDB, 
-                                VistoAPP is designed to be fast, responsive, and user-friendly.
+                                Visto is designed to be fast, responsive, and user-friendly.
                             </p>
                         </div>
                     </div>

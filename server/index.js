@@ -80,7 +80,7 @@ app.use('/exports', exportsRoutes);
 // Health check endpoint
 app.get('/', (req, res) => {
     res.json({ 
-        message: 'VistoAPP API',
+        message: 'Visto API',
         status: 'running',
         version: '1.0.0'
     });
@@ -89,14 +89,14 @@ app.get('/', (req, res) => {
 // Public info endpoints
 app.get('/about', (req, res) => {
     res.json({ 
-        message: 'VistoAPP - Transform your GitHub activity into a beautiful developer portfolio',
-        description: 'A MERN-stack application for creating customizable developer portfolios from GitHub data'
+        message: 'Visto - Transform your GitHub activity into a beautiful developer portfolio',
+        description: 'A MERN-stack application built by Sandro Iobidze as part of his learning journey. Create customizable developer portfolios from GitHub data.'
     });
 });
  
 app.get('/contact', (req, res) => {
     res.json({ 
-        message: 'Contact VistoAPP',
+        message: 'Contact Visto',
         note: 'For support and inquiries, please visit the application or check the GitHub repository'
     });
 });

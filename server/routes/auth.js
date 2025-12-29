@@ -46,6 +46,10 @@ router.get('/github', authLimiter, (req, res) => {
     const backendUrl = getBackendUrl();
     const redirectUri = `${backendUrl}/auth/github/callback`;
     
+    // Log for debugging - check Render logs to see what URL is being sent
+    logInfo(`[OAuth] Backend URL: ${backendUrl}`);
+    logInfo(`[OAuth] Redirect URI: ${redirectUri}`);
+    
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user:email,repo`;
     res.redirect(githubAuthUrl);
 });
